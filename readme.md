@@ -13,7 +13,7 @@ A Python CLI application to manage your movie collection with database storage, 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/Movies_Project.git
+   git clone https://github.com/Helvanljar/Movies_Project.git
    cd Movies_Project
    ```
 
