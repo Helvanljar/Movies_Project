@@ -1,9 +1,15 @@
 from sqlalchemy import create_engine, text
 
+# Database URL
 DB_URL = "sqlite:///movies.db"
 engine = create_engine(DB_URL, echo=True)
 
-# Create movies table
+# Drop old table (optional, clears old records)
+with engine.connect() as connection:
+    connection.execute(text("DROP TABLE IF EXISTS movies"))
+    connection.commit()
+
+# Create new movies table with poster URL
 with engine.connect() as connection:
     connection.execute(
         text("""
@@ -11,33 +17,37 @@ with engine.connect() as connection:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT UNIQUE NOT NULL,
             year INTEGER NOT NULL,
-            rating REAL NOT NULL
+            rating REAL NOT NULL,
+            poster_url TEXT
         )
         """)
     )
     connection.commit()
 
 
-def get_movies():
-    """Retrieve all movies as a dictionary from the database."""
+def list_movies():
+    """Retrieve all movies from the database."""
     with engine.connect() as connection:
         result = connection.execute(
-            text("SELECT title, year, rating FROM movies")
+            text("SELECT title, year, rating, poster_url FROM movies")
         )
         movies = result.fetchall()
-    return {row[0]: {"year": row[1], "rating": row[2]} for row in movies}
+    return {
+        row[0]: {"year": row[1], "rating": row[2], "poster_url": row[3]}
+        for row in movies
+    }
 
 
-def add_movie(title, year, rating):
+def add_movie(title, year, rating, poster_url=None):
     """Add a new movie to the database."""
     with engine.connect() as connection:
         try:
             connection.execute(
-                text(
-                    "INSERT INTO movies (title, year, rating) "
-                    "VALUES (:title, :year, :rating)"
-                ),
-                {"title": title, "year": year, "rating": rating},
+                text("""
+                    INSERT INTO movies (title, year, rating, poster_url)
+                    VALUES (:title, :year, :rating, :poster_url)
+                """),
+                {"title": title, "year": year, "rating": rating, "poster_url": poster_url}
             )
             connection.commit()
             print(f"Movie '{title}' added successfully.")
@@ -46,10 +56,11 @@ def add_movie(title, year, rating):
 
 
 def delete_movie(title):
-    """Delete a movie from the database by title."""
+    """Delete a movie by title."""
     with engine.connect() as connection:
         result = connection.execute(
-            text("DELETE FROM movies WHERE title = :title"), {"title": title}
+            text("DELETE FROM movies WHERE title = :title"),
+            {"title": title}
         )
         connection.commit()
         if result.rowcount:
@@ -59,11 +70,11 @@ def delete_movie(title):
 
 
 def update_movie(title, rating):
-    """Update the rating of an existing movie."""
+    """Update the rating of a movie."""
     with engine.connect() as connection:
         result = connection.execute(
             text("UPDATE movies SET rating = :rating WHERE title = :title"),
-            {"rating": rating, "title": title},
+            {"title": title, "rating": rating}
         )
         connection.commit()
         if result.rowcount:
@@ -72,11 +83,6 @@ def update_movie(title, rating):
             print(f"Movie '{title}' not found.")
 
 
-if __name__ == "__main__":
-    # Quick sanity test
-    add_movie("Inception", 2010, 8.8)
-    print(get_movies())
-    update_movie("Inception", 9.0)
-    print(get_movies())
-    delete_movie("Inception")
-    print(get_movies())
+def get_movies():
+    """Alias for list_movies, used in CLI."""
+    return list_movies()

@@ -1,22 +1,20 @@
 import random
 import statistics
 import requests
-import movie_storage_sql as storage  # SQL-backed storage
+import movie_storage_sql as storage  # SQL storage
 
 # ---------------------- OMDb API Config ----------------------
-API_KEY = "55ab9dcc"  # Replace with your API key
+API_KEY = "YOUR_OMDB_API_KEY"  # Replace with your OMDb API key
 BASE_URL = "http://www.omdbapi.com/"
 
 
 def fetch_movie_data(title):
-    """
-    Fetch movie information from OMDb API by title.
-    Returns a dictionary with title, year, rating, and actors.
-    """
+    """Fetch movie info from OMDb API including poster URL."""
     params = {"apikey": API_KEY, "t": title}
-    response = requests.get(BASE_URL, params=params)
-
-    if response.status_code != 200:
+    try:
+        response = requests.get(BASE_URL, params=params, timeout=5)
+        response.raise_for_status()
+    except requests.RequestException:
         print("Error: Could not connect to OMDb API.")
         return None
 
@@ -29,9 +27,10 @@ def fetch_movie_data(title):
         "title": data.get("Title"),
         "year": int(data.get("Year", 0)),
         "rating": float(data.get("imdbRating")) if data.get("imdbRating") != "N/A" else 0.0,
-        "actors": data.get("Actors", "").split(", ")
+        "poster_url": data.get("Poster")
     }
     return movie_info
+
 
 # ---------------------- CLI Functions ----------------------
 def show_menu():
@@ -60,11 +59,13 @@ def list_movies():
     print(f"\n{len(movies)} movie(s) in total:")
     for title, info in movies.items():
         print(f"{title} ({info['year']}): {info['rating']}")
+        if info.get("poster_url"):
+            print(f"Poster: {info['poster_url']}")
 
 
 def add_movie():
-    """Add a new movie by fetching details from OMDb API."""
-    title = input("Enter movie name: ").strip()
+    """Add a new movie using OMDb API (only title input needed)."""
+    title = input("Enter movie title: ").strip()
     if not title:
         print("Movie title cannot be empty.")
         return
@@ -73,9 +74,16 @@ def add_movie():
     if movie_info is None:
         return
 
-    storage.add_movie(movie_info["title"], movie_info["year"], movie_info["rating"])
+    storage.add_movie(
+        movie_info["title"],
+        movie_info["year"],
+        movie_info["rating"],
+        movie_info["poster_url"]
+    )
+
     print(f"Added '{movie_info['title']}' ({movie_info['year']}) with rating {movie_info['rating']}.")
-    print(f"Actors: {', '.join(movie_info['actors'])}")
+    if movie_info.get("poster_url"):
+        print(f"Poster: {movie_info['poster_url']}")
 
 
 def delete_movie():
@@ -135,6 +143,8 @@ def random_movie():
     title = random.choice(list(movies.keys()))
     info = movies[title]
     print(f"\nRandom movie: {title} ({info['year']}): {info['rating']}")
+    if info.get("poster_url"):
+        print(f"Poster: {info['poster_url']}")
 
 
 def search_movie():
@@ -145,6 +155,8 @@ def search_movie():
     for title, info in movies.items():
         if query in title.lower():
             print(f"{title} ({info['year']}): {info['rating']}")
+            if info.get("poster_url"):
+                print(f"Poster: {info['poster_url']}")
             found = True
     if not found:
         print("No matching movies found.")
