@@ -1,40 +1,83 @@
-import json
-import os
+from sqlalchemy import create_engine, text
 
-DATA_FILE = "data.json"
+# Define the database URL
+DB_URL = "sqlite:///movies.db"
 
-def get_movies():
-    """Load and return the movies dictionary from the data file."""
-    if not os.path.exists(DATA_FILE):
-        return {}
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        print("Warning: Could not read data file. It may be corrupted.")
-        return {}
+# Create the engine with echo=True to debug SQL statements
+engine = create_engine(DB_URL, echo=True)
 
-def save_movies(movies):
-    """Save the movies dictionary to the data file."""
-    with open(DATA_FILE, "w") as f:
-        json.dump(movies, f, indent=4)
+# Create the movies table if it does not exist
+with engine.connect() as connection:
+    connection.execute(text("""
+        CREATE TABLE IF NOT EXISTS movies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT UNIQUE NOT NULL,
+            year INTEGER NOT NULL,
+            rating REAL NOT NULL
+        )
+    """))
+    connection.commit()
+
+def list_movies():
+    """Retrieve all movies from the database."""
+    with engine.connect() as connection:
+        result = connection.execute(text("SELECT title, year, rating FROM movies"))
+        movies = result.fetchall()
+    return {row[0]: {"year": row[1], "rating": row[2]} for row in movies}
 
 def add_movie(title, year, rating):
-    """Add a new movie to the storage."""
-    movies = get_movies()
-    movies[title] = {"year": year, "rating": rating}
-    save_movies(movies)
+    """Add a new movie to the database."""
+    with engine.connect() as connection:
+        try:
+            connection.execute(
+                text("INSERT INTO movies (title, year, rating) VALUES (:title, :year, :rating)"),
+                {"title": title, "year": year, "rating": rating}
+            )
+            connection.commit()
+            print(f"Movie '{title}' added successfully.")
+        except Exception as e:
+            print(f"Error: {e}")
 
 def delete_movie(title):
-    """Delete a movie from the storage by its title."""
-    movies = get_movies()
-    if title in movies:
-        del movies[title]
-        save_movies(movies)
+    """Delete a movie from the database."""
+    with engine.connect() as connection:
+        result = connection.execute(
+            text("DELETE FROM movies WHERE title = :title"),
+            {"title": title}
+        )
+        connection.commit()
+        if result.rowcount:
+            print(f"Movie '{title}' deleted successfully.")
+        else:
+            print(f"Movie '{title}' not found.")
 
 def update_movie(title, rating):
-    """Update the rating of an existing movie."""
-    movies = get_movies()
-    if title in movies:
-        movies[title]['rating'] = rating
-        save_movies(movies)
+    """Update a movie's rating in the database."""
+    with engine.connect() as connection:
+        result = connection.execute(
+            text("UPDATE movies SET rating = :rating WHERE title = :title"),
+            {"rating": rating, "title": title}
+        )
+        connection.commit()
+        if result.rowcount:
+            print(f"Movie '{title}' updated successfully.")
+        else:
+            print(f"Movie '{title}' not found.")
+
+# -------------------------
+# Optional: quick sanity test
+# -------------------------
+if __name__ == "__main__":
+    # Test adding a movie
+    add_movie("Inception", 2010, 8.8)
+
+    # Test listing movies
+    print(list_movies())
+
+    # Test updating a movie's rating
+    update_movie("Inception", 9.0)
+    print(list_movies())
+
+    # Test deleting a movie
+    delete_movie("Inception")
+    print(list_movies())  # Should be empty if it was the only movie
