@@ -1,138 +1,165 @@
+import movie_storage_sql as storage
 import sys
 import random
-import storage.movie_storage_sql as storage
+import statistics
+import subprocess
+
+ACTIVE_USER_ID = None
+ACTIVE_USERNAME = None
+
+
+def select_user():
+    global ACTIVE_USER_ID, ACTIVE_USERNAME
+    users = storage.get_users()
+    if not users:
+        print("No users found. Create a new user:")
+        username = input("Enter username: ").strip()
+        storage.add_user(username)
+        users = storage.get_users()
+
+    print("\nSelect user:")
+    for uid, uname in users.items():
+        print(f"{uid}. {uname}")
+    print("0. Create new user")
+    choice = input("Enter choice: ").strip()
+    if choice == '0':
+        username = input("Enter username: ").strip()
+        storage.add_user(username)
+        users = storage.get_users()
+        ACTIVE_USER_ID = max(users.keys())
+        ACTIVE_USERNAME = users[ACTIVE_USER_ID]
+    else:
+        ACTIVE_USER_ID = int(choice)
+        ACTIVE_USERNAME = users[ACTIVE_USER_ID]
+
+    print(f"Welcome, {ACTIVE_USERNAME}!")
+
+
+def show_menu():
+    print("\n********** My Movies Database **********")
+    print("Menu:")
+    print("0. Exit")
+    print("1. List movies")
+    print("2. Add movie")
+    print("3. Delete movie")
+    print("4. Update movie (Add note)")
+    print("5. Stats")
+    print("6. Random movie")
+    print("7. Search movie")
+    print("8. Movies sorted by rating")
+    print("9. Generate website")
 
 
 def list_movies():
-    """List all movies in the database."""
-    movies = storage.list_movies()
+    movies = storage.list_movies(ACTIVE_USER_ID)
     if not movies:
-        print("No movies found.")
+        print(f"{ACTIVE_USERNAME}, your movie collection is empty.")
         return
-    print(f"\n{len(movies)} movies in total:\n")
-    for title, data in movies.items():
-        print(f"{title} ({data['year']}): {data['rating']}")
+    for title, info in movies.items():
+        note = f" | Note: {info['notes']}" if info['notes'] else ""
+        flag = f" ({info['country']})" if info['country'] else ""
+        print(f"{title} ({info['year']}){flag}: {info['rating']}{note}")
 
 
 def add_movie():
-    """Add a new movie by fetching from OMDb API."""
-    title = input("Enter movie title: ")
-    storage.add_movie(title)
+    title = input("Enter movie title: ").strip()
+    if not title:
+        return
+    storage.add_movie_from_api(ACTIVE_USER_ID, title)
 
 
 def delete_movie():
-    """Delete a movie by title."""
-    title = input("Enter movie title to delete: ")
-    storage.delete_movie(title)
+    title = input("Enter movie title to delete: ").strip()
+    storage.delete_movie(ACTIVE_USER_ID, title)
+    print(f"Deleted '{title}' if it existed.")
 
 
 def update_movie():
-    """Update a movie’s rating manually (not used much with API)."""
-    title = input("Enter movie title to update: ")
-    try:
-        rating = float(input("Enter new rating: "))
-        storage.update_movie(title, rating)
-    except ValueError:
-        print("Invalid rating. Please enter a number.")
+    title = input("Enter movie name: ").strip()
+    notes = input("Enter movie note: ").strip()
+    storage.update_movie(ACTIVE_USER_ID, title, notes)
 
 
 def stats():
-    """Show statistics: average, median, best, worst movies."""
-    movies = storage.list_movies()
+    movies = storage.list_movies(ACTIVE_USER_ID)
     if not movies:
-        print("No movies available for statistics.")
+        print("No movies in your collection.")
         return
-
-    ratings = [data["rating"] for data in movies.values()]
-    avg = sum(ratings) / len(ratings)
-    median = sorted(ratings)[len(ratings) // 2]
-
-    best_movie = max(movies, key=lambda t: movies[t]["rating"])
-    worst_movie = min(movies, key=lambda t: movies[t]["rating"])
-
-    print(f"Average rating: {avg:.2f}")
-    print(f"Median rating: {median:.1f}")
-    print(f"Best movie: {best_movie} ({movies[best_movie]['rating']})")
-    print(f"Worst movie: {worst_movie} ({movies[worst_movie]['rating']})")
+    ratings = [info['rating'] for info in movies.values()]
+    print(f"Average rating: {statistics.mean(ratings):.1f}")
+    print(f"Median rating: {statistics.median(ratings):.1f}")
+    best = [t for t, i in movies.items() if i['rating'] == max(ratings)]
+    worst = [t for t, i in movies.items() if i['rating'] == min(ratings)]
+    print(f"Best movie(s): {best}")
+    print(f"Worst movie(s): {worst}")
 
 
 def random_movie():
-    """Pick and display a random movie."""
-    movies = storage.list_movies()
+    movies = storage.list_movies(ACTIVE_USER_ID)
     if not movies:
-        print("No movies available.")
+        print("No movies in your collection.")
         return
-    movie = random.choice(list(movies.keys()))
-    print(f"Your random movie: {movie} ({movies[movie]['year']}): {movies[movie]['rating']}")
+    title = random.choice(list(movies.keys()))
+    info = movies[title]
+    note = f" | Note: {info['notes']}" if info['notes'] else ""
+    print(f"Random movie: {title} ({info['year']}): {info['rating']}{note}")
 
 
 def search_movie():
-    """Search for movies containing a substring in the title."""
-    movies = storage.list_movies()
-    query = input("Enter search term: ").lower()
-    results = {t: d for t, d in movies.items() if query in t.lower()}
-    if results:
-        for title, data in results.items():
-            print(f"{title} ({data['year']}): {data['rating']}")
-    else:
-        print("No results found.")
+    query = input("Enter part of movie name: ").lower()
+    movies = storage.list_movies(ACTIVE_USER_ID)
+    found = False
+    for title, info in movies.items():
+        if query in title.lower():
+            note = f" | Note: {info['notes']}" if info['notes'] else ""
+            print(f"{title} ({info['year']}): {info['rating']}{note}")
+            found = True
+    if not found:
+        print("No matching movies found.")
 
 
-def movies_sorted_by_rating():
-    """List all movies sorted by rating, descending."""
-    movies = storage.list_movies()
-    sorted_movies = sorted(movies.items(), key=lambda item: item[1]["rating"], reverse=True)
-    for title, data in sorted_movies:
-        print(f"{title} ({data['year']}): {data['rating']}")
+def sort_movies_by_rating():
+    movies = storage.list_movies(ACTIVE_USER_ID)
+    sorted_movies = sorted(movies.items(), key=lambda x: x[1]['rating'], reverse=True)
+    for title, info in sorted_movies:
+        note = f" | Note: {info['notes']}" if info['notes'] else ""
+        print(f"{title} ({info['year']}): {info['rating']}{note}")
 
 
-def print_menu():
-    """Display the menu options."""
-    print("""
-Menu:
-0. Exit
-1. List movies
-2. Add movie
-3. Delete movie
-4. Update movie
-5. Stats
-6. Random movie
-7. Search movie
-8. Movies sorted by rating
-9. Generate website
-""")
+def generate_website():
+    import generate_website
+    print("Website generated. Exiting now.")
+    sys.exit(0)
 
 
 def main():
-    """Main function for CLI."""
+    select_user()
     while True:
-        print_menu()
-        choice = input("Enter choice (0-9): ")
-
-        if choice == "0":
+        show_menu()
+        choice = input("Enter choice (0-9): ").strip()
+        if choice == '0':
             print("Bye!")
-            sys.exit()
-        elif choice == "1":
+            break
+        elif choice == '1':
             list_movies()
-        elif choice == "2":
+        elif choice == '2':
             add_movie()
-        elif choice == "3":
+        elif choice == '3':
             delete_movie()
-        elif choice == "4":
+        elif choice == '4':
             update_movie()
-        elif choice == "5":
+        elif choice == '5':
             stats()
-        elif choice == "6":
+        elif choice == '6':
             random_movie()
-        elif choice == "7":
+        elif choice == '7':
             search_movie()
-        elif choice == "8":
-            movies_sorted_by_rating()
-        elif choice == "9":
-            import website_generator
-            website_generator.generate_website()
+        elif choice == '8':
+            sort_movies_by_rating()
+        elif choice == '9':
+            generate_website()
         else:
-            print("Invalid choice, please try again.")
+            print("Invalid choice.")
 
 
 if __name__ == "__main__":

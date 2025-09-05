@@ -1,65 +1,93 @@
-# Movies_Project
+# Movies_Project 🎨
 
-A Python CLI application to manage your movie collection with database storage, API integration, and website generation.
+A Python CLI application to manage movies with user profiles, notes, posters, ratings, and website generation.
 
 ## Features
-- Store movies in an SQLite database
-- Fetch movie details (title, year, rating, poster) from the OMDb API
-- List, add, delete, update movies
-- View statistics and search movies
-- Generate a website with your movie collection
+
+- Multiple user profiles
+- Add movies from OMDb API
+- Store movie title, year, rating, poster URL, notes, and country
+- Delete movies
+- Update movie notes
+- List movies with ratings, notes, and country flags
+- Statistics: average, median, best/worst movies
+- Search movies
+- Random movie selection
+- Sort movies by rating
+- Generate HTML website for each user's movie collection
 
 ## Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/Helvanljar/Movies_Project.git
-   cd Movies_Project
-   ```
 
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate   # macOS/Linux
-   .venv\Scripts\activate      # Windows
-   ```
+```bash
+git clone <YOUR_REPO_URL>
+cd Movies_Project
+```
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+2. Create a virtual environment:
 
-4. Create a `.env` file in the project root and add your OMDb API key:
-   ```
-   OMDB_API_KEY=your_api_key_here
-   ```
+```bash
+python -m venv .venv
+```
+
+3. Activate the virtual environment:
+
+- Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+- macOS/Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+4. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+5. Create a `.env` file with your OMDb API key:
+
+```env
+OMDB_API_KEY=your_api_key_here
+```
 
 ## Usage
 
-Run the CLI application:
+1. Run the CLI:
+
 ```bash
 python movies.py
 ```
 
-Menu:
+2. Select or create a user profile.
+3. Use the menu to add, delete, update, or list movies.
+4. Generate the website (option 9) to create an HTML view of your movie collection.
+5. Exit the application with option 0.
+
+## Project Structure
+
 ```
-0. Exit
-1. List movies
-2. Add movie
-3. Delete movie
-4. Update movie
-5. Stats
-6. Random movie
-7. Search movie
-8. Movies sorted by rating
-9. Generate website
+Movies_Project/
+├── movies.py               # CLI main file
+├── movie_storage_sql.py    # SQL storage with SQLAlchemy
+├── generate_website.py     # Website generator
+├── _static/                # CSS and HTML output
+├── .env                    # OMDb API key
+├── requirements.txt        # Python dependencies
+├── README.md               # Project documentation
+└── ...
 ```
 
-## Website Generation
-When choosing option `9. Generate website`, the app creates an `index.html` file (and `style.css` if missing) in the project root.  
-Open the file in your browser to view your movie collection.
+## Notes
 
----
+- Ensure the `.env` file is never committed to public repositories.
+- The generated website will be stored in the `_static/` directory.
+- Ratings, notes, and country flags are displayed on the website.
+- Each user has a separate movie collection.
 
-## License
-This project is for educational purposes.
