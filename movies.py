@@ -4,7 +4,7 @@ import requests
 import movie_storage_sql as storage  # SQL-backed storage
 
 # ---------------------- OMDb API Config ----------------------
-API_KEY = "YOUR_OMDB_API_KEY"  # Replace with your API key
+API_KEY = "55ab9dcc"  # Replace with your API key
 BASE_URL = "http://www.omdbapi.com/"
 
 
