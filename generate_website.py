@@ -1,9 +1,16 @@
 import os
-import movie_storage_sql as storage
+import storage.movie_storage_sql as storage
 
-TEMPLATE_HTML = """<html>
+
+STATIC_DIR = "_static"
+TEMPLATE_FILE = os.path.join(STATIC_DIR, "index_template.html")
+OUTPUT_FILE = os.path.join(STATIC_DIR, "index.html")
+STYLE_FILE = os.path.join(STATIC_DIR, "style.css")
+
+
+DEFAULT_TEMPLATE = """<html>
 <head>
-    <title>Masterschool's Movie App</title>
+    <title>My Movie App</title>
     <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -12,15 +19,14 @@ TEMPLATE_HTML = """<html>
 </div>
 <div>
     <ol class="movie-grid">
-__TEMPLATE_MOVIE_GRID__
+        __TEMPLATE_MOVIE_GRID__
     </ol>
 </div>
 </body>
 </html>
 """
 
-CSS_CONTENT = """
-body {
+DEFAULT_STYLE = """body {
   background: #F5F5F0;
   color: black;
   font-family: Monaco;
@@ -68,34 +74,58 @@ body {
 }
 
 .movie-poster {
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16),
+                0 3px 6px rgba(0, 0, 0, 0.23);
     width: 128px;
     height: 193px;
 }
 """
 
 
-def generate_website():
-    movies = storage.list_movies()
-    movie_items = ""
-    for title, info in movies.items():
-        poster = info.get("poster_url") or ""
-        movie_items += f"""        <li>
+def ensure_static_files():
+    """Ensure _static directory and required template/style files exist."""
+    os.makedirs(STATIC_DIR, exist_ok=True)
+
+    if not os.path.exists(TEMPLATE_FILE):
+        with open(TEMPLATE_FILE, "w", encoding="utf-8") as f:
+            f.write(DEFAULT_TEMPLATE)
+
+    if not os.path.exists(STYLE_FILE):
+        with open(STYLE_FILE, "w", encoding="utf-8") as f:
+            f.write(DEFAULT_STYLE)
+
+
+def generate_movie_grid(movies):
+    """Generate HTML grid for all movies."""
+    movie_items = []
+    for title, data in movies.items():
+        poster = data.get("poster_url", "")
+        year = data.get("year", "")
+        movie_items.append(f"""
+        <li>
             <div class="movie">
                 <img class="movie-poster" src="{poster}" title=""/>
                 <div class="movie-title">{title}</div>
-                <div class="movie-year">{info['year']}</div>
+                <div class="movie-year">{year}</div>
             </div>
-        </li>\n"""
-    html_content = TEMPLATE_HTML.replace("__TEMPLATE_MOVIE_GRID__", movie_items)
+        </li>
+        """)
+    return "\n".join(movie_items)
 
-    if not os.path.exists("_static"):
-        os.makedirs("_static")
 
-    with open("_static/index.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
+def generate_website():
+    """Generate the website (index.html) from template and movies data."""
+    ensure_static_files()
 
-    with open("_static/style.css", "w", encoding="utf-8") as f:
-        f.write(CSS_CONTENT)
+    movies = storage.list_movies()
+    movie_grid = generate_movie_grid(movies)
 
-    print("Website was generated successfully.")
+    with open(TEMPLATE_FILE, "r", encoding="utf-8") as f:
+        template = f.read()
+
+    output = template.replace("__TEMPLATE_MOVIE_GRID__", movie_grid)
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write(output)
+
+    print(f"Website was generated successfully: {OUTPUT_FILE}")
