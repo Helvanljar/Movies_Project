@@ -1,8 +1,39 @@
 import random
 import statistics
-import movie_storage as storage
+import requests
+import movie_storage_sql as storage  # SQL-backed storage
+
+# ---------------------- OMDb API Config ----------------------
+API_KEY = "YOUR_OMDB_API_KEY"  # Replace with your API key
+BASE_URL = "http://www.omdbapi.com/"
 
 
+def fetch_movie_data(title):
+    """
+    Fetch movie information from OMDb API by title.
+    Returns a dictionary with title, year, rating, and actors.
+    """
+    params = {"apikey": API_KEY, "t": title}
+    response = requests.get(BASE_URL, params=params)
+
+    if response.status_code != 200:
+        print("Error: Could not connect to OMDb API.")
+        return None
+
+    data = response.json()
+    if data.get("Response") == "False":
+        print(f"Movie not found: {title}")
+        return None
+
+    movie_info = {
+        "title": data.get("Title"),
+        "year": int(data.get("Year", 0)),
+        "rating": float(data.get("imdbRating")) if data.get("imdbRating") != "N/A" else 0.0,
+        "actors": data.get("Actors", "").split(", ")
+    }
+    return movie_info
+
+# ---------------------- CLI Functions ----------------------
 def show_menu():
     """Display the main menu options."""
     print("\n********** My Movies Database **********")
@@ -26,37 +57,25 @@ def list_movies():
     if not movies:
         print("No movies in the database.")
         return
-
     print(f"\n{len(movies)} movie(s) in total:")
     for title, info in movies.items():
         print(f"{title} ({info['year']}): {info['rating']}")
 
 
 def add_movie():
-    """Add a new movie with title, year, and rating."""
-    while True:
-        title = input("Enter movie name: ").strip()
-        if title:
-            break
+    """Add a new movie by fetching details from OMDb API."""
+    title = input("Enter movie name: ").strip()
+    if not title:
         print("Movie title cannot be empty.")
+        return
 
-    while True:
-        try:
-            year = int(input("Enter movie year: "))
-            break
-        except ValueError:
-            print("Invalid year. Please enter a number.")
+    movie_info = fetch_movie_data(title)
+    if movie_info is None:
+        return
 
-    while True:
-        try:
-            rating = float(input("Enter movie rating (1-10): "))
-            if 1 <= rating <= 10:
-                break
-            print("Rating must be between 1 and 10.")
-        except ValueError:
-            print("Invalid rating. Enter a number between 1 and 10.")
-
-    storage.add_movie(title, year, rating)
+    storage.add_movie(movie_info["title"], movie_info["year"], movie_info["rating"])
+    print(f"Added '{movie_info['title']}' ({movie_info['year']}) with rating {movie_info['rating']}.")
+    print(f"Actors: {', '.join(movie_info['actors'])}")
 
 
 def delete_movie():
@@ -68,7 +87,6 @@ def delete_movie():
 def update_movie():
     """Update the rating of an existing movie."""
     title = input("Enter movie name to update: ").strip()
-
     while True:
         try:
             rating = float(input("Enter new rating (1-10): "))
