@@ -1,15 +1,10 @@
+import os
 from sqlalchemy import create_engine, text
 
-# Database URL
 DB_URL = "sqlite:///movies.db"
-engine = create_engine(DB_URL, echo=True)
+engine = create_engine(DB_URL, echo=False)
 
-# Drop old table (optional, clears old records)
-with engine.connect() as connection:
-    connection.execute(text("DROP TABLE IF EXISTS movies"))
-    connection.commit()
-
-# Create new movies table with poster URL
+# Create movies table with poster_url column
 with engine.connect() as connection:
     connection.execute(
         text("""
@@ -32,10 +27,8 @@ def list_movies():
             text("SELECT title, year, rating, poster_url FROM movies")
         )
         movies = result.fetchall()
-    return {
-        row[0]: {"year": row[1], "rating": row[2], "poster_url": row[3]}
-        for row in movies
-    }
+    return {row[0]: {"year": row[1], "rating": row[2], "poster_url": row[3]}
+            for row in movies}
 
 
 def add_movie(title, year, rating, poster_url=None):
@@ -43,11 +36,12 @@ def add_movie(title, year, rating, poster_url=None):
     with engine.connect() as connection:
         try:
             connection.execute(
-                text("""
-                    INSERT INTO movies (title, year, rating, poster_url)
-                    VALUES (:title, :year, :rating, :poster_url)
-                """),
-                {"title": title, "year": year, "rating": rating, "poster_url": poster_url}
+                text(
+                    "INSERT INTO movies (title, year, rating, poster_url) "
+                    "VALUES (:title, :year, :rating, :poster_url)"
+                ),
+                {"title": title, "year": year, "rating": rating,
+                 "poster_url": poster_url}
             )
             connection.commit()
             print(f"Movie '{title}' added successfully.")
@@ -56,33 +50,21 @@ def add_movie(title, year, rating, poster_url=None):
 
 
 def delete_movie(title):
-    """Delete a movie by title."""
+    """Delete a movie from the database."""
     with engine.connect() as connection:
-        result = connection.execute(
-            text("DELETE FROM movies WHERE title = :title"),
-            {"title": title}
+        connection.execute(
+            text("DELETE FROM movies WHERE title = :title"), {"title": title}
         )
         connection.commit()
-        if result.rowcount:
-            print(f"Movie '{title}' deleted successfully.")
-        else:
-            print(f"Movie '{title}' not found.")
+        print(f"Movie '{title}' deleted successfully.")
 
 
 def update_movie(title, rating):
-    """Update the rating of a movie."""
+    """Update a movie's rating."""
     with engine.connect() as connection:
-        result = connection.execute(
+        connection.execute(
             text("UPDATE movies SET rating = :rating WHERE title = :title"),
-            {"title": title, "rating": rating}
+            {"rating": rating, "title": title}
         )
         connection.commit()
-        if result.rowcount:
-            print(f"Movie '{title}' updated successfully.")
-        else:
-            print(f"Movie '{title}' not found.")
-
-
-def get_movies():
-    """Alias for list_movies, used in CLI."""
-    return list_movies()
+        print(f"Movie '{title}' updated successfully.")

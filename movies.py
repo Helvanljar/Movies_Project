@@ -1,40 +1,16 @@
+import os
 import random
 import statistics
 import requests
-import movie_storage_sql as storage  # SQL storage
+from dotenv import load_dotenv
+import movie_storage_sql as storage
 
-# ---------------------- OMDb API Config ----------------------
-API_KEY = "YOUR_OMDB_API_KEY"  # Replace with your OMDb API key
-BASE_URL = "http://www.omdbapi.com/"
-
-
-def fetch_movie_data(title):
-    """Fetch movie info from OMDb API including poster URL."""
-    params = {"apikey": API_KEY, "t": title}
-    try:
-        response = requests.get(BASE_URL, params=params, timeout=5)
-        response.raise_for_status()
-    except requests.RequestException:
-        print("Error: Could not connect to OMDb API.")
-        return None
-
-    data = response.json()
-    if data.get("Response") == "False":
-        print(f"Movie not found: {title}")
-        return None
-
-    movie_info = {
-        "title": data.get("Title"),
-        "year": int(data.get("Year", 0)),
-        "rating": float(data.get("imdbRating")) if data.get("imdbRating") != "N/A" else 0.0,
-        "poster_url": data.get("Poster")
-    }
-    return movie_info
+load_dotenv()
+OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 
 
-# ---------------------- CLI Functions ----------------------
 def show_menu():
-    """Display the main menu options."""
+    """Display the menu."""
     print("\n********** My Movies Database **********")
     print("Menu:")
     print("0. Exit")
@@ -46,214 +22,118 @@ def show_menu():
     print("6. Random movie")
     print("7. Search movie")
     print("8. Movies sorted by rating")
-    print("9. Movies sorted by year")
-    print("10. Filter movies")
+    print("9. Generate website")
 
 
 def list_movies():
-    """List all movies in the database."""
-    movies = storage.get_movies()
+    """Display all movies."""
+    movies = storage.list_movies()
     if not movies:
         print("No movies in the database.")
         return
-    print(f"\n{len(movies)} movie(s) in total:")
     for title, info in movies.items():
         print(f"{title} ({info['year']}): {info['rating']}")
-        if info.get("poster_url"):
-            print(f"Poster: {info['poster_url']}")
 
 
 def add_movie():
-    """Add a new movie using OMDb API (only title input needed)."""
+    """Add a movie via OMDb API."""
     title = input("Enter movie title: ").strip()
     if not title:
-        print("Movie title cannot be empty.")
+        print("Title cannot be empty.")
         return
-
-    movie_info = fetch_movie_data(title)
-    if movie_info is None:
-        return
-
-    storage.add_movie(
-        movie_info["title"],
-        movie_info["year"],
-        movie_info["rating"],
-        movie_info["poster_url"]
-    )
-
-    print(f"Added '{movie_info['title']}' ({movie_info['year']}) with rating {movie_info['rating']}.")
-    if movie_info.get("poster_url"):
-        print(f"Poster: {movie_info['poster_url']}")
+    url = f"http://www.omdbapi.com/?apikey={OMDB_API_KEY}&t={title}"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        if data.get("Response") == "False":
+            print(f"Movie not found: {data.get('Error')}")
+            return
+        year = int(data.get("Year", 0))
+        rating = float(data.get("imdbRating", 0.0))
+        poster = data.get("Poster", "")
+        storage.add_movie(data["Title"], year, rating, poster)
+        print(f"Movie '{data['Title']}' added successfully.")
+    except requests.RequestException as e:
+        print(f"Error accessing API: {e}")
 
 
 def delete_movie():
-    """Delete a movie by its title."""
+    """Delete a movie from the database."""
     title = input("Enter movie name to delete: ").strip()
     storage.delete_movie(title)
+    print(f"Deleted '{title}' if it existed.")
 
 
 def update_movie():
-    """Update the rating of an existing movie."""
-    title = input("Enter movie name to update: ").strip()
-    while True:
-        try:
-            rating = float(input("Enter new rating (1-10): "))
-            if 1 <= rating <= 10:
-                break
-            print("Rating must be between 1 and 10.")
-        except ValueError:
-            print("Invalid rating. Enter a number between 1 and 10.")
-
-    storage.update_movie(title, rating)
+    """Update a movie rating in the database."""
+    title = input("Enter movie name to update rating: ").strip()
+    try:
+        rating = float(input("Enter new rating (1-10): "))
+        if rating < 1 or rating > 10:
+            print("Rating must be 1-10.")
+            return
+        storage.update_movie(title, rating)
+        print(f"Updated '{title}' to rating {rating}.")
+    except ValueError:
+        print("Invalid input.")
 
 
 def stats():
-    """Show statistics including average, median, best, and worst movies."""
-    movies = storage.get_movies()
+    """Show statistics of movies."""
+    movies = storage.list_movies()
     if not movies:
-        print("No movies in the database.")
+        print("No movies.")
         return
-
     ratings = [info["rating"] for info in movies.values()]
     avg = statistics.mean(ratings)
     med = statistics.median(ratings)
     max_rating = max(ratings)
     min_rating = min(ratings)
-
-    best_movies = [t for t, i in movies.items() if i["rating"] == max_rating]
-    worst_movies = [t for t, i in movies.items() if i["rating"] == min_rating]
-
-    print(f"\nAverage rating: {avg:.1f}")
+    best = [t for t, i in movies.items() if i["rating"] == max_rating]
+    worst = [t for t, i in movies.items() if i["rating"] == min_rating]
+    print(f"Average rating: {avg:.1f}")
     print(f"Median rating: {med:.1f}")
-    print("Best movie(s):")
-    for title in best_movies:
-        print(f"{title}: {max_rating}")
-    print("Worst movie(s):")
-    for title in worst_movies:
-        print(f"{title}: {min_rating}")
+    print(f"Best: {best}")
+    print(f"Worst: {worst}")
 
 
 def random_movie():
-    """Show a random movie from the database."""
-    movies = storage.get_movies()
+    """Show a random movie."""
+    movies = storage.list_movies()
     if not movies:
-        print("No movies in the database.")
+        print("No movies.")
         return
-
     title = random.choice(list(movies.keys()))
     info = movies[title]
-    print(f"\nRandom movie: {title} ({info['year']}): {info['rating']}")
-    if info.get("poster_url"):
-        print(f"Poster: {info['poster_url']}")
+    print(f"Random movie: {title} ({info['year']}): {info['rating']}")
 
 
 def search_movie():
-    """Search for movies by partial name match."""
-    movies = storage.get_movies()
+    """Search movies by name."""
+    movies = storage.list_movies()
     query = input("Enter part of movie name: ").lower()
     found = False
     for title, info in movies.items():
         if query in title.lower():
             print(f"{title} ({info['year']}): {info['rating']}")
-            if info.get("poster_url"):
-                print(f"Poster: {info['poster_url']}")
             found = True
     if not found:
-        print("No matching movies found.")
+        print("No matches found.")
 
 
 def sort_movies_by_rating():
-    """Sort and display movies by rating in descending order."""
-    movies = storage.get_movies()
-    if not movies:
-        print("No movies in the database.")
-        return
-
-    sorted_movies = sorted(
-        movies.items(), key=lambda x: x[1]["rating"], reverse=True
-    )
-    print("\nMovies sorted by rating (highest to lowest):")
+    """Sort movies by rating descending."""
+    movies = storage.list_movies()
+    sorted_movies = sorted(movies.items(), key=lambda x: x[1]["rating"], reverse=True)
     for title, info in sorted_movies:
-        print(f"{title} ({info['year']}): {info['rating']}")
-
-
-def sort_movies_by_year():
-    """Sort and display movies by year."""
-    movies = storage.get_movies()
-    if not movies:
-        print("No movies in the database.")
-        return
-
-    while True:
-        choice = input("Show latest movies first? (y/n): ").strip().lower()
-        if choice in ["y", "n"]:
-            break
-        print("Invalid input. Enter 'y' or 'n'.")
-
-    reverse = choice == "y"
-    sorted_movies = sorted(
-        movies.items(), key=lambda x: x[1]["year"], reverse=reverse
-    )
-    print("\nMovies sorted by year:")
-    for title, info in sorted_movies:
-        print(f"{title} ({info['year']}): {info['rating']}")
-
-
-def filter_movies():
-    """Filter movies by minimum rating and year range."""
-    movies = storage.get_movies()
-    if not movies:
-        print("No movies in the database.")
-        return
-
-    while True:
-        min_rating = input(
-            "Enter minimum rating (leave blank for no minimum rating): "
-        ).strip()
-        if min_rating == "" or min_rating.replace(".", "", 1).isdigit():
-            break
-        print("Invalid minimum rating.")
-
-    while True:
-        start_year = input(
-            "Enter start year (leave blank for no start year): "
-        ).strip()
-        if start_year == "" or start_year.isdigit():
-            break
-        print("Invalid start year.")
-
-    while True:
-        end_year = input("Enter end year (leave blank for no end year): ").strip()
-        if end_year == "" or end_year.isdigit():
-            break
-        print("Invalid end year.")
-
-    min_rating_val = float(min_rating) if min_rating else None
-    start_year_val = int(start_year) if start_year else None
-    end_year_val = int(end_year) if end_year else None
-
-    filtered = {
-        t: i
-        for t, i in movies.items()
-        if (min_rating_val is None or i["rating"] >= min_rating_val)
-        and (start_year_val is None or i["year"] >= start_year_val)
-        and (end_year_val is None or i["year"] <= end_year_val)
-    }
-
-    if not filtered:
-        print("No movies match the filter criteria.")
-        return
-
-    print("\nFiltered Movies:")
-    for title, info in filtered.items():
         print(f"{title} ({info['year']}): {info['rating']}")
 
 
 def main():
-    """Main loop to run the menu-driven movie manager."""
+    """Main program loop."""
     while True:
         show_menu()
-        choice = input("Enter choice (0-10): ").strip()
+        choice = input("Enter choice (0-9): ").strip()
         if choice == "0":
             print("Bye!")
             break
@@ -274,11 +154,12 @@ def main():
         elif choice == "8":
             sort_movies_by_rating()
         elif choice == "9":
-            sort_movies_by_year()
-        elif choice == "10":
-            filter_movies()
+            import generate_website
+            generate_website.generate_website()
+            print("Website generated. Exiting.")
+            break
         else:
-            print("Invalid choice. Enter a number from 0 to 10.")
+            print("Invalid choice.")
 
 
 if __name__ == "__main__":
