@@ -1,93 +1,99 @@
-# Movies_Project 🎨
+# 🎬 Masterschool's Movie App
 
-A Python CLI application to manage movies with user profiles, notes, posters, ratings, and website generation.
+A Python-based application to manage your movie collection, fetch metadata from the OMDb API, and generate a visually appealing static HTML website showcasing movie posters, ratings, and country flags.
 
-## Features
+## ✨ Features
+- **Multi-user support**: Manage movie collections for multiple user profiles.
+- **OMDb API integration**: Automatically fetch movie details (title, year, rating, poster, country).
+- **Country flags**: Display country-specific flags using [FlagsAPI](https://flagsapi.com/).
+- **SQLite database**: Store movie data persistently using SQLAlchemy.
+- **Static website generation**: Create a responsive HTML website with hover effects on movie posters, ratings (⭐), and notes.
+- **Interactive CLI**: Add, delete, update, search, sort, and view stats for movies.
 
-- Multiple user profiles
-- Add movies from OMDb API
-- Store movie title, year, rating, poster URL, notes, and country
-- Delete movies
-- Update movie notes
-- List movies with ratings, notes, and country flags
-- Statistics: average, median, best/worst movies
-- Search movies
-- Random movie selection
-- Sort movies by rating
-- Generate HTML website for each user's movie collection
+## 🛠️ Installation
 
-## Installation
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Helvanljar/movies_project.git
+   cd movies_project
+   ```
 
-1. Clone the repository:
+2. **Create and activate a virtual environment**:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
 
-```bash
-git clone <YOUR_REPO_URL>
-cd Movies_Project
-```
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2. Create a virtual environment:
+4. **Set up environment variables**:
+   Create a `.env` file in the project root with the following:
+   ```env
+   OMDB_API_KEY=your_api_key_here
+   DB_FILE=movies.db
+   ```
+   Obtain a free OMDb API key from [OMDb API](http://www.omdbapi.com/apikey.aspx).
 
-```bash
-python -m venv .venv
-```
+## ▶️ Usage
 
-3. Activate the virtual environment:
-
-- Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-- macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-4. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-5. Create a `.env` file with your OMDb API key:
-
-```env
-OMDB_API_KEY=your_api_key_here
-```
-
-## Usage
-
-1. Run the CLI:
-
+Run the main program:
 ```bash
 python movies.py
 ```
 
-2. Select or create a user profile.
-3. Use the menu to add, delete, update, or list movies.
-4. Generate the website (option 9) to create an HTML view of your movie collection.
-5. Exit the application with option 0.
+### Available Commands
+- `1` - List all movies in your collection.
+- `2` - Add a movie (fetched automatically via OMDb API).
+- `3` - Delete a movie.
+- `4` - Update a movie's note.
+- `5` - View collection stats.
+- `6` - Pick a random movie.
+- `7` - Search movies by title.
+- `8` - Sort movies by rating.
+- `9` - Generate a static website.
 
-## Project Structure
-
+### 🌍 Generated Website
+Running option `9` generates a static website in:
 ```
-Movies_Project/
-├── movies.py               # CLI main file
-├── movie_storage_sql.py    # SQL storage with SQLAlchemy
-├── generate_website.py     # Website generator
-├── _static/                # CSS and HTML output
-├── .env                    # OMDb API key
-├── requirements.txt        # Python dependencies
-├── README.md               # Project documentation
-└── ...
+movies_project/_static/index.html
+```
+Open `index.html` in a browser to view your movie collection with:
+- Movie posters with hover effects.
+- Titles, release years, and ratings (e.g., ⭐ 8.5).
+- Country flags for each movie.
+- User-specific collections grouped by profile.
+
+To serve the website locally for testing:
+```bash
+cd _static
+python -m http.server
+```
+Visit `http://localhost:8000` in your browser.
+
+## 📋 Prerequisites
+- **Python**: 3.9 or higher
+- **Dependencies** (listed in `requirements.txt`):
+  - `requests`
+  - `sqlalchemy`
+  - `python-dotenv`
+
+Install dependencies using:
+```bash
+pip install requests sqlalchemy python-dotenv
 ```
 
-## Notes
+## 🤝 Contributing
+Contributions are welcome! To contribute:
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/your-feature`).
+3. Commit your changes (`git commit -m 'Add your feature'`).
+4. Push to the branch (`git push origin feature/your-feature`).
+5. Open a Pull Request.
 
-- Ensure the `.env` file is never committed to public repositories.
-- The generated website will be stored in the `_static/` directory.
-- Ratings, notes, and country flags are displayed on the website.
-- Each user has a separate movie collection.
+Please ensure your code follows the project's style and includes relevant tests.
 
+## 📧 Contact
+For questions or feedback, open an issue on GitHub or contact [Helvanljar](https://github.com/Helvanljar).

@@ -1,60 +1,70 @@
 import os
-from movie_storage_sql import list_movies, get_users
+from storage.movie_storage_sql import list_movies, list_users
 
 STATIC_DIR = "_static"
 HTML_FILE = "index.html"
 CSS_FILE = "style.css"
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-css_content = """
+CSS_CONTENT = """
 body {background: #F5F5F0; color: black; font-family: Monaco;}
-.list-movies-title {padding: 10px 0; background: #009B50; color: white; text-align: center; font-size: 16pt;}
+.list-movies-title {padding: 10px 0; background: #009B50; color: white; text-align: center; font-size: 20pt;}
+h2 {text-align: center; margin-top: 20px;}
 .movie-grid {list-style: none; display: flex; flex-wrap: wrap; justify-content: center; padding: 0; margin:0;}
-.movie-grid li {padding: 10px; text-align:center;}
-.movie {width: 140px; margin:5px;}
+.movie-grid li {padding: 10px; text-align:center; position: relative;}
+.movie {width: 160px; margin:5px;}
 .movie-title, .movie-year, .movie-rating {font-size: 0.8em;}
 .movie-year {color: #999;}
-.movie-poster {width:128px; height:193px; box-shadow:0 3px 6px rgba(0,0,0,0.16),0 3px 6px rgba(0,0,0,0.23);}
-.movie-poster:hover::after {content: attr(title); position: absolute; background: rgba(0,0,0,0.7); color:white; padding:5px; top:0; left:0; width:140px; font-size:0.7em;}
+.movie-poster {width:140px; height:210px; border-radius:8px; box-shadow:0 4px 8px rgba(0,0,0,0.3); transition: transform 0.3s;}
+.movie-poster:hover {transform: scale(1.05);}
+.flag {width: 24px; height: 16px; margin-left: 5px; vertical-align: middle;}
 """
 
-with open(os.path.join(STATIC_DIR, CSS_FILE), "w", encoding="utf-8") as f:
-    f.write(css_content)
+def generate_website():
+    with open(os.path.join(STATIC_DIR, CSS_FILE), "w", encoding="utf-8") as f:
+        f.write(CSS_CONTENT)
 
-# generate all movies for all users
-users = get_users()
-movie_items = ""
-for uid, uname in users.items():
-    movies = list_movies(uid)
-    if not movies:
-        continue
-    movie_items += f"<h2>{uname}'s Collection</h2>\n<ol class='movie-grid'>\n"
-    for title, info in movies.items():
-        country_flag = info['country'][:2].upper() if info['country'] else ""
-        note = info['notes'].replace('"', '\\"')
-        movie_items += f"""
+    users = list_users()
+    movie_sections = ""
+    for uid, uname in users.items():
+        movies = list_movies(uid)
+        if not movies:
+            continue
+        movie_sections += f"<h2>{uname}'s Collection</h2>\n<ol class='movie-grid'>\n"
+        for title, info in movies.items():
+            flag_img = f"<img class='flag' src='https://flagsapi.com/{info['country_code']}/flat/24.png' alt='flag'/>" if info['country_code'] else ""
+            note = info['notes'].replace('"', '&quot;') if info['notes'] else ""
+            movie_sections += f"""
 <li>
     <div class="movie">
         <img class="movie-poster" src="{info['poster_url']}" title="{note}"/>
         <div class="movie-title">{title}</div>
-        <div class="movie-year">{info['year']} {country_flag}</div>
+        <div class="movie-year">{info['year']} {flag_img}</div>
         <div class="movie-rating">⭐ {info['rating']}</div>
     </div>
 </li>
 """
-    movie_items += "</ol>\n"
+        movie_sections += "</ol>\n"
 
-html_content = f"""<html>
+    html_content = f"""<html>
 <head>
     <title>Masterschool's Movie App</title>
+    <meta charset="UTF-8">
     <link rel="stylesheet" href="{CSS_FILE}"/>
 </head>
 <body>
 <div class="list-movies-title">
     <h1>Masterschool's Movie App</h1>
 </div>
-{movie_items}
+{movie_sections}
 </body>
 </html>"""
 
-with open(os.path.join(STATIC_DIR, HTML_FILE), "w", encoding="utf-8")
+    with open(os.path.join(STATIC_DIR, HTML_FILE), "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    print("🌍 Website was generated successfully!")
+
+# Ensure the script runs if executed directly
+if __name__ == "__main__":
+    generate_website()
