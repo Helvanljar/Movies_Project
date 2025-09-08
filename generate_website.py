@@ -6,7 +6,11 @@ HTML_FILE = "index.html"
 CSS_FILE = "style.css"
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-CSS_CONTENT = """
+# Path to CSS file
+CSS_PATH = os.path.join(STATIC_DIR, CSS_FILE)
+
+# Default CSS (only created once if file is missing)
+DEFAULT_CSS = """
 body {background: #F5F5F0; color: black; font-family: Monaco;}
 .list-movies-title {padding: 10px 0; background: #009B50; color: white; text-align: center; font-size: 20pt;}
 h2 {text-align: center; margin-top: 20px;}
@@ -20,9 +24,15 @@ h2 {text-align: center; margin-top: 20px;}
 .flag {width: 24px; height: 16px; margin-left: 5px; vertical-align: middle;}
 """
 
+def ensure_css_file():
+    """Create style.css if missing."""
+    if not os.path.exists(CSS_PATH):
+        with open(CSS_PATH, "w", encoding="utf-8") as f:
+            f.write(DEFAULT_CSS)
+
+
 def generate_website():
-    with open(os.path.join(STATIC_DIR, CSS_FILE), "w", encoding="utf-8") as f:
-        f.write(CSS_CONTENT)
+    ensure_css_file()
 
     users = list_users()
     movie_sections = ""
@@ -65,6 +75,6 @@ def generate_website():
 
     print("🌍 Website was generated successfully!")
 
-# Ensure the script runs if executed directly
+
 if __name__ == "__main__":
     generate_website()

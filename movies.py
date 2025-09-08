@@ -21,9 +21,15 @@ def select_user():
         return select_user()
 
     if choice == len(users) + 1:
-        name = input("Enter new username: ").strip()
-        ACTIVE_USER_ID = storage.add_user(name)
-        print(f"✅ User '{name}' created and selected.")
+        # Prevent empty usernames
+        while True:
+            name = input("Enter new username: ").strip()
+            if not name:
+                print("⚠️ Username cannot be empty. Please try again.")
+                continue
+            ACTIVE_USER_ID = storage.add_user(name)
+            print(f"✅ User '{name}' created and selected.")
+            break
     elif choice in users:
         ACTIVE_USER_ID = choice
         print(f"🎬 Welcome back, {users[choice]}!")
@@ -39,21 +45,32 @@ def list_movies():
         print("📢 Your collection is empty.")
         return
     for title, info in movies.items():
-        print(f"{title} ({info['year']}) ⭐ {info['rating']}")
+        year = info.get("year", "N/A")
+        rating = info.get("rating", "N/A")
+        print(f"{title} ({year}) ⭐ {rating}")
 
 
 def add_movie():
     title = input("Enter movie title: ").strip()
+    if not title:
+        print("⚠️ Title cannot be empty.")
+        return
     storage.add_movie_from_api(ACTIVE_USER_ID, title)
 
 
 def delete_movie():
     title = input("Enter movie title to delete: ").strip()
+    if not title:
+        print("⚠️ Title cannot be empty.")
+        return
     storage.delete_movie(ACTIVE_USER_ID, title)
 
 
 def update_movie():
     title = input("Enter movie title: ").strip()
+    if not title:
+        print("⚠️ Title cannot be empty.")
+        return
     note = input("Enter note: ").strip()
     storage.update_movie(ACTIVE_USER_ID, title, note)
 
@@ -68,6 +85,9 @@ def random_movie():
 
 def search_movie():
     query = input("Enter search term: ").strip()
+    if not query:
+        print("⚠️ Search term cannot be empty.")
+        return
     storage.search_movies(ACTIVE_USER_ID, query)
 
 
@@ -94,6 +114,7 @@ Menu:
         choice = input("Enter choice (0-9): ").strip()
 
         if choice == "0":
+            print("👋 Goodbye!")
             break
         elif choice == "1":
             list_movies()
